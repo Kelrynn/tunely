@@ -5,48 +5,57 @@
  *
  */
 
-
-/* hard-coded data! */
-var sampleAlbums = [];
-sampleAlbums.push({
-             artistName: 'Ladyhawke',
-             name: 'Ladyhawke',
-             releaseDate: '2008, November 18',
-             genres: [ 'new wave', 'indie rock', 'synth pop' ]
-           });
-sampleAlbums.push({
-             artistName: 'The Knife',
-             name: 'Silent Shout',
-             releaseDate: '2006, February 17',
-             genres: [ 'synth pop', 'electronica', 'experimental' ]
-           });
-sampleAlbums.push({
-             artistName: 'Juno Reactor',
-             name: 'Shango',
-             releaseDate: '2000, October 9',
-             genres: [ 'electronic', 'goa trance', 'tribal house' ]
-           });
-sampleAlbums.push({
-             artistName: 'Philip Wesley',
-             name: 'Dark Night of the Soul',
-             releaseDate: '2008, September 12',
-             genres: [ 'piano' ]
-           });
-/* end of hard-coded data */
-
-
-
-
 $(document).ready(function() {
   console.log('app.js loaded!');
   $.get('/api/albums', function(data) {
     data.albums.forEach(album => renderAlbum(album));
   });
+  $( "form" ).on( "submit", function( event ) {
+    event.preventDefault();
+    let formdata = $(this).serialize();
+    $(this).trigger('reset');
+    $.post('/api/albums?'+formdata, function(album) {
+      renderAlbum(album);
+    });
+  });
+  $('#albums').on('click', '.add-song', handleNewSongButtonClick);
+  $('#songModal').on('click', '#saveSong',handleNewSongSubmit);
 });
 
+function handleNewSongButtonClick() {
+  var id = $(this).parents('.album').data('album-id'); // ex: "5665ff1678209c64e51b4e7b"
+  $('#songModal').data('album-id', id);
+  $('#songModal').modal();
+}
+
+// call this when the button on the modal is clicked
+function handleNewSongSubmit(e) {
+  e.preventDefault();
+
+  // get data from modal fields
+  let query = $('#modal-form').serialize();
+  let id = $('#songModal').data().albumId;
+  $('#songName').val("");
+  $('#trackNumber').val("");
+  // POST to SERVER
+  $.post('/api/albums/' + id +'/songs?' + query, function(album) {
+      $('#songModal').modal('toggle');
+      // close modal
+      // update the correct album to show the new song
+      $(`#${album._id}`).html(buildSongsHtml(album.songs));
+  });
+  
+  
+}
 
 
-
+function buildSongsHtml(songs) {
+  let songHtml = "";
+  for (var i = 0; i < songs.length; i++) {
+    songHtml += `– (${songs[i].trackNumber}) ${songs[i].name} ` 
+  }
+  return songHtml;
+}
 
 // this function takes a single album and renders it to the page
 function renderAlbum(album) {
@@ -77,6 +86,10 @@ function renderAlbum(album) {
   "                        <h4 class='inline-header'>Released date:</h4>" +
   "                        <span class='album-releaseDate'>" + album.releaseDate + "</span>" +
   "                      </li>" +
+  "                      <li class='list-group-item'>" +
+  "                       <h4 class='inline-header'>Songs:</h4>" +
+  "                         <span class='song-list' id='"+album._id+"'>" + buildSongsHtml(album.songs) + " </span>" +
+  "                      </li>" +
   "                    </ul>" +
   "                  </div>" +
   "                </div>" +
@@ -85,6 +98,7 @@ function renderAlbum(album) {
   "              </div>" + // end of panel-body
 
   "              <div class='panel-footer'>" +
+  "               <button class='btn btn-primary add-song'>Add Song</button>" +
   "              </div>" +
 
   "            </div>" +
